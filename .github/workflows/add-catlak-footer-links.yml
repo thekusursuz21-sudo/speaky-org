@@ -1,0 +1,51 @@
+name: Add Catlak footer links
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/add-catlak-footer-links.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update-footer-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add dofollow footer links to every HTML page
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          marker = '<span class="catlak-footer-links">'
+          links = '<span class="catlak-footer-links"><a href="https://catlak.org/">Sohbet</a> · <a href="https://catlak.org/">Sohbet Odaları</a></span>'
+          count = 0
+
+          for path in Path('.').rglob('*.html'):
+              text = path.read_text(encoding='utf-8')
+              if marker in text:
+                  continue
+              if '</footer>' not in text:
+                  continue
+              text = text.replace('</footer>', f'<div class="wrap" style="text-align:center;margin-top:14px">{links}</div></footer>', 1)
+              path.write_text(text, encoding='utf-8')
+              count += 1
+
+          print(f'Updated {count} HTML pages')
+          PY
+      - name: Commit generated footer links
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add '*.html' '**/*.html'
+          git commit -m "Add Catlak.org footer links site-wide"
+          git push
